@@ -8,103 +8,260 @@
 </head>
 <body>
 
-{# Petit outil Jinja : fabrique les <option> d'une liste et sélectionne la valeur choisie #}
+{# ---------- Petits outils Jinja (réutilisés plusieurs fois dans la page) ---------- #}
+
+{# Liste déroulante : chaque élément est (valeur d'origine, libellé français) #}
 {% macro options(liste, choisi) %}
-  {% for x in liste %}
-    <option value="{{ x }}" {% if x == choisi %}selected{% endif %}>{{ x }}</option>
+  {% for valeur, libelle in liste %}
+    <option value="{{ valeur }}" {% if valeur == choisi %}selected{% endif %}>{{ libelle }}</option>
   {% endfor %}
 {% endmacro %}
 
-<main class="carte">
-  <h1>💼 Prédire le domaine professionnel</h1>
-  <p class="intro">Remplis le profil d'une personne : le modèle prédit son <strong>domaine professionnel</strong>.</p>
+{# Icônes SVG simples #}
+{% macro icone(nom) %}
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    {% if nom == "briefcase" %}
+      <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    {% elif nom == "user" %}
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    {% elif nom == "tool" %}
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    {% elif nom == "shield" %}
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    {% elif nom == "info" %}
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+    {% elif nom == "chart" %}
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    {% elif nom == "spark" %}
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>
+    {% endif %}
+  </svg>
+{% endmacro %}
 
-  {% if erreur %}
-    <p class="erreur">{{ erreur }}</p>
-  {% endif %}
+<div class="app">
 
-  <form method="post" action="/">
-    <div class="grille">
-
-      <div class="colonne">
-        <label>Âge
-          <input type="number" name="age" min="17" max="90" value="{{ v.age }}" required>
-        </label>
-
-        <label>Niveau d'études
-          <select name="etudes">{{ options(etudes, v.etudes) }}</select>
-        </label>
-
-        <label>Sexe
-          <select name="sexe">{{ options(["Male", "Female"], v.sexe) }}</select>
-        </label>
-
-        <label>Heures de travail par semaine
-          <input type="number" name="heures" min="1" max="99" value="{{ v.heures }}" required>
-        </label>
-
-        <label>Gain en capital
-          <input type="number" name="gain" min="0" step="100" value="{{ v.gain }}">
-        </label>
-
-        <label>Perte en capital
-          <input type="number" name="perte" min="0" step="100" value="{{ v.perte }}">
-        </label>
-
-        <label class="case">
-          <input type="checkbox" name="revenu" {% if v.revenu %}checked{% endif %}>
-          Revenu annuel supérieur à 50K$
-        </label>
+  {# =========================== BARRE LATÉRALE (formulaire) =========================== #}
+  <aside class="sidebar">
+    <div class="marque">
+      <span class="logo">{{ icone("briefcase") }}</span>
+      <div>
+        <h1>Prédiction du domaine professionnel</h1>
       </div>
-
-      <div class="colonne">
-        <label>Type d'employeur
-          <select name="workclass">{{ options(cat["workclass"], v.workclass) }}</select>
-        </label>
-
-        <label>Situation maritale
-          <select name="marital">{{ options(cat["marital-status"], v.marital) }}</select>
-        </label>
-
-        <label>Relation familiale
-          <select name="relation">{{ options(cat["relationship"], v.relation) }}</select>
-        </label>
-
-        <label>Origine (race)
-          <select name="race">{{ options(cat["race"], v.race) }}</select>
-        </label>
-
-        <label>Pays d'origine
-          <select name="pays">{{ options(cat["native-country"], v.pays) }}</select>
-        </label>
-      </div>
-
     </div>
+    <p class="presentation">
+      Découvrez à quel grand domaine professionnel correspond le profil d'une personne,
+      grâce à notre modèle de machine learning.
+    </p>
 
-    <button type="submit">Prédire</button>
-  </form>
-
-  {% if resultat %}
-  <section class="resultat">
-    <h2>Domaine prédit</h2>
-    <p class="gagnant">{{ resultat.domaine }}</p>
-    <p>Confiance du modèle : <strong>{{ resultat.confiance }} %</strong></p>
-
-    {% for d in resultat.details %}
-      <div class="ligne">
-        <span class="nom">{{ d.nom }}</span>
-        <div class="barre"><div class="remplissage" style="width: {{ d.pct }}%"></div></div>
-        <span class="pct">{{ d.pct }} %</span>
+    {# ----- Profils d'exemple ----- #}
+    <section class="bloc exemples">
+      <h2>Profils d'exemple</h2>
+      <p class="aide">De vraies personnes du dataset. Clique pour tester le modèle.</p>
+      <div class="liste-exemples">
+        {% for ex in exemples %}
+          <button type="button" class="ex niveau-{{ ex.niveau|lower }} {% if ex.id == exemple_actif %}actif{% endif %}"
+                  data-id="{{ ex.id }}" data-profil='{{ ex.profil|tojson }}'>
+            <span class="pastille">{{ ex.niveau }}</span>
+            <span class="ex-texte"><strong>{{ ex.titre }}</strong><small>{{ ex.detail }}</small></span>
+          </button>
+        {% endfor %}
       </div>
-    {% endfor %}
-  </section>
-  {% endif %}
+    </section>
 
-  <p class="pied">
-    Modèle XGBoost entraîné sur le dataset Adult (Census) — accuracy sur le jeu de test :
-    {{ "%.1f"|format(accuracy) }} %. Projet pédagogique : les prédictions ne sont pas fiables à 100 %.
-  </p>
-</main>
+    <form id="formulaire" method="post" action="/">
+      <input type="hidden" name="exemple" id="exemple" value="{{ exemple_actif or '' }}">
 
+      {% if erreur %}<p class="erreur">{{ erreur }}</p>{% endif %}
+
+      {# ----- Informations personnelles ----- #}
+      <section class="bloc">
+        <h2>{{ icone("user") }} Informations personnelles</h2>
+
+        <div class="champ">
+          <div class="champ-tete"><label for="age">Âge</label><output id="age-val">{{ v.age }}</output></div>
+          <input type="range" id="age" name="age" min="17" max="90" value="{{ v.age }}">
+        </div>
+
+        <div class="champ">
+          <label for="etudes">Niveau d'études</label>
+          <select id="etudes" name="etudes">{{ options(choix.etudes, v.etudes) }}</select>
+        </div>
+
+        <div class="champ">
+          <span class="etiquette">Sexe</span>
+          <div class="segment">
+            <label><input type="radio" name="sexe" value="Male" {% if v.sexe == "Male" %}checked{% endif %}><span>Homme</span></label>
+            <label><input type="radio" name="sexe" value="Female" {% if v.sexe == "Female" %}checked{% endif %}><span>Femme</span></label>
+          </div>
+        </div>
+
+        <div class="champ">
+          <div class="champ-tete"><label for="heures">Heures de travail par semaine</label><output id="heures-val">{{ v.heures }}</output></div>
+          <input type="range" id="heures" name="heures" min="1" max="99" value="{{ v.heures }}">
+        </div>
+
+        <label class="interrupteur">
+          <input type="checkbox" name="revenu" {% if v.revenu %}checked{% endif %}>
+          <span class="glissiere"></span>
+          <span>Revenu annuel supérieur à 50 K$</span>
+        </label>
+
+        <div class="deux-colonnes">
+          <div class="champ">
+            <label for="gain">Gain en capital</label>
+            <input type="number" id="gain" name="gain" min="0" step="1" value="{{ v.gain }}">
+          </div>
+          <div class="champ">
+            <label for="perte">Perte en capital</label>
+            <input type="number" id="perte" name="perte" min="0" step="1" value="{{ v.perte }}">
+          </div>
+        </div>
+      </section>
+
+      {# ----- Informations professionnelles ----- #}
+      <section class="bloc">
+        <h2>{{ icone("briefcase") }} Informations professionnelles</h2>
+
+        <div class="champ">
+          <label for="workclass">Type d'employeur</label>
+          <select id="workclass" name="workclass">{{ options(choix.workclass, v.workclass) }}</select>
+        </div>
+        <div class="champ">
+          <label for="marital">Situation maritale</label>
+          <select id="marital" name="marital">{{ options(choix.marital, v.marital) }}</select>
+        </div>
+        <div class="champ">
+          <label for="relation">Relation familiale</label>
+          <select id="relation" name="relation">{{ options(choix.relation, v.relation) }}</select>
+        </div>
+        <div class="champ">
+          <label for="race">Origine (race)</label>
+          <select id="race" name="race">{{ options(choix.race, v.race) }}</select>
+        </div>
+        <div class="champ">
+          <label for="pays">Pays d'origine</label>
+          <select id="pays" name="pays">{{ options(choix.pays, v.pays) }}</select>
+        </div>
+      </section>
+
+      <div class="zone-bouton">
+        <button type="submit" class="bouton-principal">{{ icone("spark") }} Prédire le domaine professionnel</button>
+      </div>
+    </form>
+  </aside>
+
+  {# =========================== ZONE PRINCIPALE =========================== #}
+  <div class="principal">
+
+    <header class="barre-haut">
+      <div class="titre-haut">{{ icone("briefcase") }} <strong>Occupation AI</strong></div>
+      <span class="badge-modele"><i></i> Modèle XGBoost</span>
+    </header>
+
+    <main class="contenu">
+
+      {# ----- Titre ----- #}
+      <section class="hero">
+        <div>
+          <h2>Quel est le <span>domaine professionnel</span> qui correspond à votre profil&nbsp;?</h2>
+          <p>Renseignez les informations ci-contre et découvrez la prédiction de notre modèle de machine learning,
+             entraîné sur le dataset Adult (Census).</p>
+        </div>
+        <svg class="hero-img" viewBox="0 0 220 130" aria-hidden="true">
+          <rect x="10" y="12" width="170" height="106" rx="12" fill="#ffffff" stroke="#c7d7f5" stroke-width="2"/>
+          <rect x="28" y="84" width="22" height="22" rx="4" fill="#2563eb"/>
+          <rect x="60" y="62" width="22" height="44" rx="4" fill="#f59e0b"/>
+          <rect x="92" y="40" width="22" height="66" rx="4" fill="#10b981"/>
+          <circle cx="160" cy="70" r="30" fill="#e8f0ff" stroke="#2563eb" stroke-width="5"/>
+          <circle cx="160" cy="62" r="8" fill="#2563eb"/>
+          <path d="M146 86a14 12 0 0 1 28 0z" fill="#2563eb"/>
+          <line x1="182" y1="93" x2="205" y2="116" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/>
+        </svg>
+      </section>
+
+      {# ----- Résultat ----- #}
+      <section id="resultat">
+        {% if resultat %}
+          {% set d = resultat.domaine %}
+          <div class="carte resultat d-{{ d.cle }}">
+            <span class="rond">{{ icone(d.icone) }}</span>
+            <div class="resultat-texte">
+              <span class="etiquette-vert">Résultat de la prédiction</span>
+              <h3>{{ d.nom }} <small>({{ d.sous_titre }})</small></h3>
+              <p class="proba-label">Probabilité estimée par le modèle</p>
+              <p class="proba-valeur">{{ resultat.confiance }}&nbsp;%</p>
+            </div>
+            <div class="explication">
+              <h4>{{ icone("info") }} Que signifie ce résultat&nbsp;?</h4>
+              <p>{{ d.explication }}</p>
+            </div>
+          </div>
+
+          {% if resultat.exemple %}
+            {% set e = resultat.exemple %}
+            <div class="carte verdict {{ 'ok' if e.correct else 'ko' }}">
+              <strong>Profil d'exemple « {{ e.titre }} » ({{ e.niveau|lower }})</strong>
+              <p>Métier réel dans le dataset : <b>{{ e.metier_reel }}</b> (domaine <b>{{ e.domaine_reel }}</b>).
+                {% if e.correct %}
+                  ✔ Le modèle a trouvé le bon domaine.
+                {% else %}
+                  ✖ Le modèle s'est trompé : ce profil ressemble à un autre domaine. C'est la limite des données
+                  disponibles (seulement des variables socio-démographiques).
+                {% endif %}
+              </p>
+            </div>
+          {% endif %}
+
+          <div class="carte">
+            <h3 class="titre-carte">{{ icone("chart") }} Répartition des probabilités</h3>
+            {% for x in resultat.details %}
+              <div class="ligne d-{{ x.domaine.cle }}">
+                <span class="nom"><i class="point"></i>{{ x.domaine.nom }}</span>
+                <div class="barre"><div class="remplissage" style="width: {{ x.pct }}%"></div></div>
+                <span class="pct">{{ x.pct_txt }}&nbsp;%</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="carte vide">
+            <span class="rond">{{ icone("spark") }}</span>
+            <p><strong>Aucune prédiction pour l'instant.</strong><br>
+               Remplis le formulaire ou choisis un profil d'exemple, puis clique sur
+               « Prédire le domaine professionnel ».</p>
+          </div>
+        {% endif %}
+      </section>
+
+      {# ----- Les 3 domaines ----- #}
+      <section class="carte">
+        <h3 class="titre-carte">{{ icone("briefcase") }} Les 3 grands domaines professionnels</h3>
+        <div class="trois-domaines">
+          {% for dom in domaines %}
+            <article class="domaine d-{{ dom.cle }}">
+              <div class="domaine-tete">
+                <span class="rond petit">{{ icone(dom.icone) }}</span>
+                <div><h4>{{ dom.nom }}</h4><p>{{ dom.resume }}</p></div>
+              </div>
+              <ul>
+                {% for m in dom.metiers %}<li>{{ metiers_fr[m] }} <small>({{ m }})</small></li>{% endfor %}
+              </ul>
+              <span class="code">Code : {{ dom.code }}</span>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+
+      {# ----- Pied de page ----- #}
+      <footer class="pied">
+        <span>{{ icone("chart") }} Modèle XGBoost entraîné sur le dataset Adult (Census).</span>
+        <span>{{ icone("chart") }} Accuracy sur le jeu de test : <strong>{{ accuracy }}&nbsp;%</strong>.</span>
+        <span>{{ icone("info") }} Projet pédagogique : les prédictions ne sont pas fiables à 100&nbsp;%.</span>
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
 </body>
 </html>
