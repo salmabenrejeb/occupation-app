@@ -1,4 +1,7 @@
-streamlit
+fastapi
+uvicorn
+jinja2
+python-multipart
 xgboost==3.4.1
 scikit-learn==1.9.1
 joblib==1.6.0

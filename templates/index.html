@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prédiction du domaine professionnel</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+{# Petit outil Jinja : fabrique les <option> d'une liste et sélectionne la valeur choisie #}
+{% macro options(liste, choisi) %}
+  {% for x in liste %}
+    <option value="{{ x }}" {% if x == choisi %}selected{% endif %}>{{ x }}</option>
+  {% endfor %}
+{% endmacro %}
+
+<main class="carte">
+  <h1>💼 Prédire le domaine professionnel</h1>
+  <p class="intro">Remplis le profil d'une personne : le modèle prédit son <strong>domaine professionnel</strong>.</p>
+
+  {% if erreur %}
+    <p class="erreur">{{ erreur }}</p>
+  {% endif %}
+
+  <form method="post" action="/">
+    <div class="grille">
+
+      <div class="colonne">
+        <label>Âge
+          <input type="number" name="age" min="17" max="90" value="{{ v.age }}" required>
+        </label>
+
+        <label>Niveau d'études
+          <select name="etudes">{{ options(etudes, v.etudes) }}</select>
+        </label>
+
+        <label>Sexe
+          <select name="sexe">{{ options(["Male", "Female"], v.sexe) }}</select>
+        </label>
+
+        <label>Heures de travail par semaine
+          <input type="number" name="heures" min="1" max="99" value="{{ v.heures }}" required>
+        </label>
+
+        <label>Gain en capital
+          <input type="number" name="gain" min="0" step="100" value="{{ v.gain }}">
+        </label>
+
+        <label>Perte en capital
+          <input type="number" name="perte" min="0" step="100" value="{{ v.perte }}">
+        </label>
+
+        <label class="case">
+          <input type="checkbox" name="revenu" {% if v.revenu %}checked{% endif %}>
+          Revenu annuel supérieur à 50K$
+        </label>
+      </div>
+
+      <div class="colonne">
+        <label>Type d'employeur
+          <select name="workclass">{{ options(cat["workclass"], v.workclass) }}</select>
+        </label>
+
+        <label>Situation maritale
+          <select name="marital">{{ options(cat["marital-status"], v.marital) }}</select>
+        </label>
+
+        <label>Relation familiale
+          <select name="relation">{{ options(cat["relationship"], v.relation) }}</select>
+        </label>
+
+        <label>Origine (race)
+          <select name="race">{{ options(cat["race"], v.race) }}</select>
+        </label>
+
+        <label>Pays d'origine
+          <select name="pays">{{ options(cat["native-country"], v.pays) }}</select>
+        </label>
+      </div>
+
+    </div>
+
+    <button type="submit">Prédire</button>
+  </form>
+
+  {% if resultat %}
+  <section class="resultat">
+    <h2>Domaine prédit</h2>
+    <p class="gagnant">{{ resultat.domaine }}</p>
+    <p>Confiance du modèle : <strong>{{ resultat.confiance }} %</strong></p>
+
+    {% for d in resultat.details %}
+      <div class="ligne">
+        <span class="nom">{{ d.nom }}</span>
+        <div class="barre"><div class="remplissage" style="width: {{ d.pct }}%"></div></div>
+        <span class="pct">{{ d.pct }} %</span>
+      </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <p class="pied">
+    Modèle XGBoost entraîné sur le dataset Adult (Census) — accuracy sur le jeu de test :
+    {{ "%.1f"|format(accuracy) }} %. Projet pédagogique : les prédictions ne sont pas fiables à 100 %.
+  </p>
+</main>
+
+</body>
+</html>
